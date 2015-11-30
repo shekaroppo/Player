@@ -70,12 +70,20 @@ class PlaybackManager implements AudioManager.OnAudioFocusChangeListener,
         String mediaId = metadata.getDescription().getMediaId();
         boolean mediaChanged = (mCurrentMedia == null || !getCurrentMediaId().equals(mediaId));
 
-        if (mMediaPlayer == null) {
+        if (mState == PlaybackState.STATE_PAUSED && mMediaPlayer != null) {
+            startPlayback();
+        } else if (mMediaPlayer == null) {
             mMediaPlayer = new MediaPlayer();
             mMediaPlayer.setAudioStreamType(AudioManager.STREAM_MUSIC);
             mMediaPlayer.setWakeMode(mContext.getApplicationContext(),
                     PowerManager.PARTIAL_WAKE_LOCK);
             mMediaPlayer.setOnCompletionListener(this);
+            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
+                @Override
+                public void onPrepared(MediaPlayer mp) {
+                    startPlayback();
+                }
+            });
         } else {
             if (mediaChanged) {
                 mMediaPlayer.reset();
@@ -87,12 +95,14 @@ class PlaybackManager implements AudioManager.OnAudioFocusChangeListener,
             try {
                 mMediaPlayer.setDataSource(mContext.getApplicationContext(),
                         Uri.parse(MusicLibrary.getSongUri(mediaId)));
-                mMediaPlayer.prepare();
+                mMediaPlayer.prepareAsync();
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
+    }
 
+    private void startPlayback() {
         if (tryToGetAudioFocus()) {
             mPlayOnFocusGain = false;
             mMediaPlayer.start();
