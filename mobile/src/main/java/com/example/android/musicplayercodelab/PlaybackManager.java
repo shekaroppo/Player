@@ -20,7 +20,6 @@ import android.media.AudioManager;
 import android.media.MediaMetadata;
 import android.media.MediaPlayer;
 import android.media.session.PlaybackState;
-import android.net.Uri;
 import android.os.PowerManager;
 import android.os.SystemClock;
 
@@ -93,8 +92,7 @@ class PlaybackManager implements AudioManager.OnAudioFocusChangeListener,
         if (mediaChanged) {
             mCurrentMedia = metadata;
             try {
-                mMediaPlayer.setDataSource(mContext.getApplicationContext(),
-                        Uri.parse(MusicLibrary.getSongUri(mediaId)));
+                mMediaPlayer.setDataSource(mCurrentMedia.getString(MusicProvider.CUSTOM_METADATA_TRACK_SOURCE));
                 mMediaPlayer.prepareAsync();
             } catch (IOException e) {
                 throw new RuntimeException(e);

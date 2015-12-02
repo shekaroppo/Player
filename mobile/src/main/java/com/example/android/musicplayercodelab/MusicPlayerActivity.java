@@ -24,6 +24,7 @@ import android.media.session.PlaybackState;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -32,6 +33,8 @@ import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,15 +56,18 @@ public class MusicPlayerActivity extends AppCompatActivity {
 
     private MediaBrowser mMediaBrowser;
 
+    private static final String TAG = "MusicPlayerActivity";
+
     private final MediaBrowser.ConnectionCallback mConnectionCallback =
             new MediaBrowser.ConnectionCallback() {
                 @Override
                 public void onConnected() {
+                    Log.d(TAG, "MediaBrowser.ConnectionCallback onConnected: ");
                     mMediaBrowser.subscribe(mMediaBrowser.getRoot(), mSubscriptionCallback);
                     MediaController mediaController = new MediaController(
                             MusicPlayerActivity.this, mMediaBrowser.getSessionToken());
                     updatePlaybackState(mediaController.getPlaybackState());
-                    updateMetadata(mediaController.getMetadata());
+                    //updateMetadata(mediaController.getMetadata());
                     mediaController.registerCallback(mMediaControllerCallback);
                     setMediaController(mediaController);
                 }
@@ -72,18 +78,21 @@ public class MusicPlayerActivity extends AppCompatActivity {
     private final MediaController.Callback mMediaControllerCallback = new MediaController.Callback() {
         @Override
         public void onMetadataChanged(MediaMetadata metadata) {
+            Log.d(TAG, "MediaController.Callback onMetadataChanged: ");
             updateMetadata(metadata);
             mBrowserAdapter.notifyDataSetChanged();
         }
 
         @Override
         public void onPlaybackStateChanged(PlaybackState state) {
+            Log.d(TAG, "MediaController.Callback onPlaybackStateChanged: ");
             updatePlaybackState(state);
             mBrowserAdapter.notifyDataSetChanged();
         }
 
         @Override
         public void onSessionDestroyed() {
+            Log.d(TAG, "MediaController.Callback onSessionDestroyed: ");
             updatePlaybackState(null);
             mBrowserAdapter.notifyDataSetChanged();
         }
@@ -93,6 +102,7 @@ public class MusicPlayerActivity extends AppCompatActivity {
         new MediaBrowser.SubscriptionCallback() {
             @Override
             public void onChildrenLoaded(String parentId, List<MediaBrowser.MediaItem> children) {
+                Log.d(TAG, "MediaController.Callback mSubscriptionCallback: ");
                 onMediaLoaded(children);
             }
         };
@@ -145,7 +155,7 @@ public class MusicPlayerActivity extends AppCompatActivity {
     @Override
     public void onStart() {
         super.onStart();
-
+        Log.d(TAG, "onStart: ");
         mMediaBrowser = new MediaBrowser(this,
                new ComponentName(this, MusicService.class), mConnectionCallback, null);
         mMediaBrowser.connect();
@@ -153,6 +163,7 @@ public class MusicPlayerActivity extends AppCompatActivity {
 
     @Override
     public void onStop() {
+        Log.d(TAG, "onStop: ");
         super.onStop();
         try {
             getMediaController().unregisterCallback(mMediaControllerCallback);
@@ -163,6 +174,7 @@ public class MusicPlayerActivity extends AppCompatActivity {
     }
 
     private void updatePlaybackState(PlaybackState state) {
+        Log.d(TAG, "updatePlaybackState: ");
         mCurrentState = state;
         if (state == null || state.getState() == PlaybackState.STATE_PAUSED ||
                 state.getState() == PlaybackState.STATE_STOPPED) {
@@ -174,11 +186,14 @@ public class MusicPlayerActivity extends AppCompatActivity {
     }
 
     private void updateMetadata(MediaMetadata metadata) {
+        Log.d(TAG, "updateMetadata: ");
         mCurrentMetadata = metadata;
         mTitle.setText(metadata == null ? "" : metadata.getDescription().getTitle());
         mSubtitle.setText(metadata == null ? "" : metadata.getDescription().getSubtitle());
-        mAlbumArt.setImageBitmap(metadata == null ? null : MusicLibrary.getAlbumBitmap(this,
-                metadata.getDescription().getMediaId()));
+        Picasso.with(this)
+                .load(metadata.getString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI))
+                .placeholder(R.drawable.ic_launcher)
+                .into(mAlbumArt);
         mBrowserAdapter.notifyDataSetChanged();
     }
 
@@ -222,12 +237,11 @@ public class MusicPlayerActivity extends AppCompatActivity {
             if (state == PlaybackState.STATE_PAUSED ||
                     state == PlaybackState.STATE_STOPPED ||
                     state == PlaybackState.STATE_NONE) {
-
-                if (mCurrentMetadata == null) {
-                    mCurrentMetadata = MusicLibrary.getMetadata(MusicPlayerActivity.this,
-                            MusicLibrary.getMediaItems().get(0).getMediaId());
-                    updateMetadata(mCurrentMetadata);
-                }
+//                if (mCurrentMetadata == null) {
+//                    mCurrentMetadata = MusicProvider.getMetadata(MusicPlayerActivity.this,
+//                            MusicProvider.getMediaItems().get(0).getMediaId());
+//                    updateMetadata(mCurrentMetadata);
+//                }
                 getMediaController().getTransportControls().playFromMediaId(
                         mCurrentMetadata.getDescription().getMediaId(), null);
 
